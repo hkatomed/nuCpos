@@ -1,0 +1,13 @@
+Package: nuCpos
+Title: An R package for prediction of nucleosome positions
+Version: 0.99.0
+Description: nuCpos, a derivative of NuPoP, is an R package for prediction of nucleosome positions. In nuCpos, a duration hidden Markov model is trained with a chemical map of nucleosomes either from budding yeast, fission yeast, or mouse embryonic stem cells. nuCpos outputs the Viterbi (most probable) path of nucleosome-linker states, predicted nucleosome occupancy scores and histone binding affinity (HBA) scores as NuPoP does. nuCpos can also calculate local and whole nucleosomal HBA scores for a given 147-bp sequence. Furthermore, effect of genetic alterations on nucleosome occupancy can be predicted with this package. The parental package NuPoP, which is based on an MNase-seq-based map of budding yeast nucleosomes, was developed by Ji-Ping Wang and Liqun Xi, licensed under GPL-2. 
+Author: Hiroaki Kato, Takeshi Urano
+Maintainer: Hiroaki Kato <hkato@med.shimane-u.ac.jp>
+License: GPL-2
+Depends: R (>= 3.5.1)
+Imports: graphics, methods
+Suggests: NuPoP, Biostrings, testthat
+biocViews: Genetics, Epigenetics, NucleosomePositioning, HiddenMarkovModel
+Date: 2018-7-27
+NeedsCompilation: yes

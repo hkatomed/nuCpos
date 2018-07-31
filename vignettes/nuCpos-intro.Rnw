@@ -1,0 +1,500 @@
+
+%\VignetteIndexEntry{An R package for prediction of nucleosome positioning}
+%\VignetteKeywords{Nucleosome}
+
+\documentclass[a4paper]{article}
+
+\newcommand{\Rpackage}[1]{{\textit{#1}}}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\textit{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\usepackage{ccaption}
+\usepackage{natbib}
+
+\setlength{\textwidth}{6.2in}
+\setlength{\textheight}{8.5in}
+\setlength{\parskip}{1.5ex plus0.5ex minus 0.5ex}
+\setlength{\oddsidemargin}{0.1cm}
+\setlength{\evensidemargin}{0.1cm}
+\setlength{\headheight}{0.3cm}
+\setlength{\arraycolsep}{0.1cm}
+
+\renewcommand{\baselinestretch}{1}
+
+\begin{document}
+\title{An introduction to the nuCpos package}
+\author{Hiroaki Kato\thanks{hkato@med.shimane-u.ac.jp}, \  Takeshi Urano\\
+Department of Biochemistry, Shimane University School of Medicine}
+
+\maketitle
+
+\section{About nuCpos}
+
+\Rpackage{nuCpos}, a derivative of \Rpackage{NuPoP}, 
+is an R package for predicting \textbf{\textit{nuc}}leosome 
+\textbf{\textit{pos}}itions. In \Rpackage{nuCpos}, 
+a duration hidden Markov model is trained with a 
+\textbf{\textit{C}}hemical map of nucleosomes either from 
+budding yeast \textit{Saccharomyces cerevisiae} 
+(\cite{stat:Brogaard2012}), fission yeast 
+\textit{Schizosaccharomyces pombe} (\cite{stat:Moyle-Heyrman2013}), 
+or embryonic stem cells of house mouse \textit{Mus musculus} 
+(\cite{stat:Voong2016}). \Rpackage{nuCpos} outputs the Viterbi 
+(most probable) path of nucleosome-linker states, 
+predicted nucleosome occupancy scores and histone binding affinity 
+(HBA) scores as \Rpackage{NuPoP} does. \Rpackage{nuCpos} can also 
+calculate local and whole nucleosomal HBA scores for 
+a given 147-bp sequence. Furthermore, effect of genetic alterations 
+on nucleosome occupancy can be predicted with this package.
+
+The parental package \Rpackage{NuPoP}, licensed under GPL-2, 
+was developed by Ji-Ping Wang and Liqun Xi. Please refer to 
+\cite{stat:XiWang2010} and \cite{stat:WangWidom2008} for 
+technical details of \Rpackage{NuPoP}. Note that \Rpackage{NuPoP} 
+uses an MNase-seq-based map of budding yeast nucleosomes to train 
+a duration hidden Markov model.
+
+
+\section{nuCpos functions}
+\Rpackage{nuCpos} has four functions: \verb@predNuCpos@, 
+\verb@HBA@, \verb@localHBA@ and \verb@mutNuCpos@. 
+The \verb@predNuCpos@ function can serve 
+a chemical counterpart of the 
+\verb@predNuPoP@ function of \Rpackage{NuPoP}: it predicts the 
+nucleosome positioning and nucleosome occupancy. 
+
+The functions \verb@HBA@ and \verb@localHBA@ receive a sequence of 
+147-bp DNA and calculate whole nucleosomal and local HBA scores. 
+The \verb@mutNuCpos@ function receives a wild-type DNA sequence 
+and information on a genetic alteration to predict the effect of 
+the mutation on nucleosome positioning. 
+
+\Rpackage{nuCpos} requires the \Rpackage{Biostrings} package, 
+especially when DNA sequences are given as DNAString objects to 
+the functions \verb@HBA@, \verb@localHBA@ and \verb@mutNuCpos@. 
+These functions can also receive DNA sequences as simple character 
+string objects without loading the \Rpackage{Biostrings} package. 
+Note: \Rpackage{nuCpos} requires the \Rpackage{NuPoP} package to perform 
+some example runs.
+
+Load the \Rpackage{nuCpos} package as follows:
+
+<<>>=
+library(nuCpos)
+@
+
+
+\section{Performing predictions with predNuCpos}
+The \verb@predNuCpos@ function acts like the \verb@predNuPoP@ 
+function of \Rpackage{NuPoP}. 
+When the $\Rfunarg{ActLikePredNuPoP}$ argument is set as TRUE, 
+\verb@predNuCpos@ reads a DNA 
+sequence file in FASTA format and invokes a Fortran subroutine 
+to perform predictions. The prediction results will be saved 
+in the working directory. \textit{TRP1ARS1x1.fasta}, the DNA 
+sequence of \textit{TRP1ARS1} circular minichromosome (1,465 bp) 
+(\cite{stat:Fuse2017}), in \Robject{extdata} can be used for 
+an example run. Call the \verb@predNuCpos@ function as follows:
+
+<<>>=
+predNuCpos(file = system.file("extdata", "TRP1ARS1x1.fasta", 
+    package = "nuCpos"), species = "sc", smoothHBA = FALSE, 
+    ActLikePredNuPoP = TRUE)
+@ 
+
+The argument $\Rfunarg{file}$ is the path to the fasta file. 
+The argument $\Rfunarg{species}$ can be specified as follows: 
+mm = \textit{M. musculus};  sc = \textit{S. cerevisiae}; 
+sp = \textit{S. pombe}. Re-scaling of the nucleosome and linker 
+models for the prediction of other species' nucleosomes are 
+not supported. \Rpackage{nuCpos} uses 4th order Markov chain 
+models for the prediction. 
+
+The name of the output file will be like 
+\textit{TRP1ARS1x1.fasta\_Prediction4.txt}. 
+As in the output file produced by the parental \Rpackage{NuPoP} 
+package, it will contain five columns: 
+\begin{enumerate}
+    \item{\Robject{Position}: position in the input DNA sequence.}
+    \item{\Robject{P-start}:  probability that a nucleosome starts at.}
+    \item{\Robject{Occup}:    nucleosome occupancy score.}
+    \item{\Robject{N/L}:      Viterbi path (1 and 0 for the 
+        nucleosome and linker states, respectively).}
+    \item{\Robject{Affinity}: histone binding affinity score.} 
+\end{enumerate}
+
+To import the output into R, the \verb@readNuPoP@ function of 
+    \Rpackage{NuPoP} can be used:
+<<>>=
+library(NuPoP)
+results.TRP1ARS1x1 <- readNuPoP("TRP1ARS1x1.fasta_Prediction4.txt", 
+    startPos = 1, endPos = 1465)
+results.TRP1ARS1x1[1:5,]
+@ 
+
+The arguments $\Rfunarg{startPos}$ and $\Rfunarg{endPos}$ are used 
+to import a part of the prediction results. In this example, 
+the prediction results for the whole tested sequence is imported. 
+First and last 73-bp regions do not have HBA scores 
+(\Robject{Affinity}) as they cannot be calculated. 
+The HBA scores start from the 74th position:
+
+<<>>=
+results.TRP1ARS1x1[72:76,]
+@
+
+For visualization of the prediction results, the \verb@plotNuPoP@ 
+function of \Rpackage{NuPoP} can be used. This function draws 
+two plots in the graphical window. The top one shows predicted 
+nucleosome occupancy. In the bottom one, probability of a nucleosome 
+to start at the given position (blue vertical lines) and the 
+Viterbi path (red lines) are shown as well as the nucleosome 
+occupancy (gray). 
+
+<<fig=TRUE>>=
+plotNuPoP(results.TRP1ARS1x1)
+@ 
+
+For prediction of nucleosome positioning in short circular DNA, 
+one can use a triplicated sequence for prediction and read only 
+the central copy for the evaluation. By triplicating the DNA, 
+inaccurate prediction near the DNA ends, which are joined to 
+each other in the circular form, can be avoided.
+
+<<>>=
+predNuCpos(file = system.file("extdata", "TRP1ARS1x3.fasta", 
+    package = "nuCpos"), species = "sc", smoothHBA = FALSE, 
+    ActLikePredNuPoP = TRUE)
+results.TRP1ARS1 <- readNuPoP("TRP1ARS1x3.fasta_Prediction4.txt", 
+    startPos = 1466, endPos = 2930)
+@ 
+
+Here, \Robject{TRP1ARS1x3.fasta} in \Robject{extdata} is a 
+triplicated sequence (4,395 bp) of the \textit{TRP1ARS1} 
+minichromosome (1,465 bp). 
+The central part (from the coordinate 1,466 to 2,930) of the 
+prediction results is read by \verb@readNuPoP@. They are apparently 
+different from the previous results near the terminal regions.
+
+<<fig=TRUE>>=
+par(mfrow = c(2, 1))
+plot(x = 1:1465, y = results.TRP1ARS1x1[,3], type = "n", 
+    ylim = c(-0.05, 1), xlab = "Position from the EcoRI site #1", 
+    ylab = "probability/occupancy")
+title("Not triplicated")
+polygon(c(1, 1:1465, 1465), c(0, results.TRP1ARS1x1[,3], 0), col = 8)
+points(x = 1:1465, y = results.TRP1ARS1x1[,4], type = "l", col = 2)
+points(x = 1:1465, y = results.TRP1ARS1x1[, 2], type = "h", col = 4)
+
+plot(x = 1:1465, y = results.TRP1ARS1[,3], type = "n", 
+    ylim = c(-0.05, 1), xlab = "Position from the EcoRI site #1", 
+    ylab = "probability/occupancy")
+title("Triplicated: central copy")
+polygon(c(1, 1:1465, 1465), c(0, results.TRP1ARS1[,3], 0), col = 8)
+points(x = 1:1465, y = results.TRP1ARS1[,4], type = "l", col = 2)
+points(x = 1:1465, y = results.TRP1ARS1[, 2], type = "h", col = 4)
+@
+
+
+The main difference between the \verb@predNuCpos@ function of 
+\Rpackage{nuCpos} and the \verb@predNuPoP@ function of 
+\Rpackage{NuPoP} is the nucleosome maps for constructing 
+statistical models. As \Rpackage{NuPoP} is based on an 
+MNase-based-map, it can be affected by MNase's enzymatic 
+preference to cut AT-rich sequence. 
+
+For comparison, use the \verb@predNuPoP@ function of \Rpackage{NuPoP} 
+and plot the results alongside those obtained with \Rpackage{nuCpos}. 
+Please ignore the line starting with \textit{Prediction output} 
+and running past the right margin because it cannot be suppressed.
+
+<<fig=TRUE>>=
+predNuPoP(file = system.file("extdata", "TRP1ARS1x3.fasta", 
+    package = "nuCpos"), species = 7, model = 4)
+results.NuPoP <- readNuPoP("TRP1ARS1x3.fasta_Prediction4.txt", 
+    startPos = 1466, endPos = 2930)
+
+par(mfrow = c(2, 1))
+plot(x = 1:1465, y = results.TRP1ARS1[,3], type = "n", 
+    ylim = c(-0.05, 1), xlab = "Position from the EcoRI site #1", 
+    ylab = "probability/occupancy")
+title("NuCpos: Eight nucleosomes on the Viterbi path")
+polygon(c(1, 1:1465, 1465), c(0, results.TRP1ARS1[,3], 0), col = 8)
+points(x = 1:1465, y = results.TRP1ARS1[,4], type = "l", col = 2)
+points(x = 1:1465, y = results.TRP1ARS1[, 2], type = "h", col = 4)
+text(x = 800, y = 0.5, labels = "*", cex = 2)
+
+plot(x = 1:1465, y = results.NuPoP[,3], type = "n", 
+    ylim = c(-0.05, 1), xlab = "Position from the EcoRI site #1", 
+    ylab = "probability/occupancy")
+title("NuPoP: Seven nucleosomes on the Viterbi path")
+polygon(c(1, 1:1465, 1465), c(0, results.NuPoP[,3], 0), col = 8)
+points(x = 1:1465, y = results.NuPoP[,4], type = "l", col = 2)
+points(x = 1:1465, y = results.NuPoP[, 2], type = "h", col = 4)
+@
+
+As shown above, eight and seven nucleosomes are predicted along 
+the \textit{TRP1ARS1} minichromosome by \Rpackage{nuCpos} and 
+\Rpackage{NuPoP}, respectively. Most of the nucleosomes 
+predicted by \Rpackage{nuCpos} are in similar locations 
+\textit{in vivo} (\cite{stat:Fuse2017}). The predicted 
+nucleosomes \#1-4 appear to correspond to the \textit{in vivo} 
+nucleosomes IV-VII, which locates in the \textit{TRP1} gene. 
+Whereas the predicted nucleosomes \#6-8 appear to correspond to 
+the \textit{in vivo} nucleosomes I-III, which locates between 
+the DNase hypersensitive regions (HSR) A and B. The predicted 
+nucleosome \#5 (labeled with *) is positioned in the 
+\textit{in vivo} nucleosome free region HSR-A, which contains 
+the DNA replication origin \textit{ARS1}, where origin recognition 
+complex may inhibit nucleosome formation \textit{in vivo}. 
+
+
+By specifying the argument $\Rfunarg{smoothHBA}$ as TRUE, 
+HBA scores can be smoothed in a 55-bp window as being done by 
+the \verb@predNuPoP@ function of \Rpackage{NuPoP}.
+
+<<fig=TRUE>>=
+predNuCpos(file = system.file("extdata", "TRP1ARS1x3.fasta", 
+    package = "nuCpos"), species = "sc", smoothHBA = TRUE, 
+    ActLikePredNuPoP = TRUE)
+results.TRP1ARS1.smooth <- readNuPoP("TRP1ARS1x3.fasta_Prediction4.txt", 
+    startPos = 1466, endPos = 2930)
+
+par(mfrow = c(2, 1))
+plot(x = 1:1465, y = results.TRP1ARS1[,3], type = "n", 
+    ylim = c(-0.05, 1), xlab = "Position from the EcoRI site #1", 
+    ylab = "probability/occupancy")
+title("Occupancy(grey)/probability(blue)/Viterbi(red)")
+polygon(c(1, 1:1465, 1465), c(0, results.TRP1ARS1[,3], 0), col = 8)
+points(x = 1:1465, y = results.TRP1ARS1[,4], type = "l", col = 2)
+points(x = 1:1465, y = results.TRP1ARS1[, 2], type = "h", col = 4)
+
+plot(x = 1:1465, y = results.TRP1ARS1[,5], type = "n", 
+    xlab = "Position from the EcoRI site #1", 
+    ylab = "HBA", main = "HBA(red)/smoothed HBA(blue)")
+points(x = 1:1465, y = results.TRP1ARS1[,5], type = "l", col = 2)
+points(x = 1:1465, y = results.TRP1ARS1.smooth[,5], type = "l", col = 4)
+@
+
+As shown as a red line in the bottom one of the above plots, 
+non-smoothed HBA scores in eukaryotic sequences exhibit 
+about 10-bp periodicity. The dyads of predicted nucleosomes usually 
+locate at the coordinates with high HBA scores. HBA scores in 
+the output of \verb@predNuCpos@ can be standardized as being done 
+by the \verb@predNuPoP@ function of \Rpackage{NuPoP} by specifying 
+the argument $\Rfunarg{std}$ of \verb@predNuCpos@ as TRUE. 
+The default setting for $\Rfunarg{std}$ is FALSE.
+
+When the argument $\Rfunarg{ActLikePredNuPoP}$ is set as FALSE, 
+which is the default setting, 
+\verb@predNuCpos@ receives a character string or DNAString object 
+as $\Rfunarg{inseq}$. 
+In this case, prediction results will be returned to the 
+R environment, and no file will be generated in the working directory.
+The input sequence ($\Rfunarg{inseq}$) must not contain characters 
+other than A/C/G/T. 
+
+The results will contain five columns: 
+\begin{enumerate}
+    \item{\Robject{pos}: position in the input DNA sequence.}
+    \item{\Robject{pstart}:  probability that a nucleosome starts at.}
+    \item{\Robject{nucoccup}:    nucleosome occupancy score.}
+    \item{\Robject{viterbi}:      Viterbi path (1 and 0 for the 
+        nucleosome and linker states, respectively).}
+    \item{\Robject{affinity}: histone binding affinity score.} 
+\end{enumerate}
+
+<<>>=
+TRP1ARS1 <- paste(scan(file = 
+    system.file("extdata", "TRP1ARS1x1.fasta", package = "nuCpos"), 
+    what = character(), skip = 1), sep = "", collapse = "")
+results.TRP1ARS1.internal <- 
+    predNuCpos(inseq = TRP1ARS1, species = "sc", smoothHBA = FALSE, 
+    ActLikePredNuPoP = FALSE)
+results.TRP1ARS1.internal[72:76,]
+@
+
+
+\section{Histone binding affinity score calculation with HBA}
+
+HBA score can be calculated for a given 147-bp sequence with the 
+\verb@HBA@ function. In the examples bellow, a character string 
+object \Robject{inseq} and a DNAString object \Robject{INSEQ} with 
+the same 147-bp DNA sequences are given to \verb@HBA@. Note: the 
+\Rpackage{Biostrings} package is required for the latter case.
+
+<<>>=
+load(system.file("extdata", "inseq.RData", package = "nuCpos"))
+HBA(inseq = inseq, species = "sc")
+for(i in 1:3) cat(substr(inseq, start = (i-1)*60+1, 
+    stop = (i-1)*60+60), "\n")
+load(system.file("extdata", "INSEQ_DNAString.RData", 
+    package = "nuCpos"))
+INSEQ
+HBA(inseq = INSEQ, species = "sc")
+@
+
+The argument $\Rfunarg{inseq}$ is the character string object to 
+be given. Alternatively, a DNAString object can be used here. 
+The length of DNA must be 147 bp. The argument $\Rfunarg{species}$ 
+can be specified as follows: mm = \textit{M. musculus}; 
+sc = \textit{S. cerevisiae}; sp = \textit{S. pombe}. 
+
+
+\section{Local histone binding affinity score calculation 
+    with localHBA}
+
+Local HBA scores are defined as HBA scores for 13 overlapping 
+subnucleosomal segments named A to M. They can be calculated for 
+a given 147-bp sequence with the \verb@localHBA@ function. 
+Like \verb@HBA@, this function can receive either a character 
+string object or a DNAString object. The segment G corresponds to 
+the central 21 bp region, in which the dyad axis passes through 
+the 11th base position. This means that the local HBA score for 
+the G segment implies the relationship between DNA and histone 
+proteins at around superhelical locations -0.5 and +0.5. 
+The neighboring F segment, which is 20 bp in length, 
+is for SHLs -1.5 and -0.5. The result of example run shown below 
+suggests that subsequence of \Robject{inseq} around SHL -3.5 and 
+-2.5 is suitable for nucleosome formation. 
+
+
+<<fig=TRUE>>=
+localHBA(inseq = inseq, species = "sc")
+barplot(localHBA(inseq = inseq, species = "sc"), 
+    names.arg = LETTERS[1:13], xlab = "Nucleosomal subsegments", 
+    ylab = "local HBA", main = "Local HBA scores for inseq")
+@
+
+
+\section{Prediction of nucleosome positioning in wild-type 
+    and mutant sequences with mutNuCpos}
+
+The function \verb@mutNuCpos@ is designed to examine the effect of 
+genetic alterations on nucleosome positioning. 
+In the example run below, the \textit{TALS} circular minichromosome 
+(1,811 bp) is used as a wild-type sequence. \cite{stat:Ichikawa2014} 
+showed that insertion of telomere repeats into the \textit{TALS} 
+minichromosome inhibits formation of positioned nucleosome 
+\textit{in vivo}. Here, a 178-bp telomere repeat sequence is 
+inserted at the base position 1,464 of \textit{TALS}.
+
+<<fig=TRUE>>=
+TALS <- paste(scan(file = 
+    system.file("extdata", "TALS.fasta", package = "nuCpos"), 
+    what = character(), skip = 1), sep = "", collapse = "")
+for(i in 1:23) cat(substr(TALS, 
+    start = (i-1)*80+1, stop = (i-1)*80+80), "\n")
+TTAGGGx29 <- paste(scan(file = 
+    system.file("extdata", "TTAGGGx29.fasta", package = "nuCpos"), 
+    what = character(), skip = 1), sep = "", collapse = "")
+for(i in 1:3) cat(substr(TTAGGGx29, 
+    start = (i-1)*80+1, stop = (i-1)*80+80), "\n")
+mut.results <- mutNuCpos(wtseq = TALS, site = 1464, ins = TTAGGGx29, 
+    species = "sc", smoothHBA = TRUE, plot.window = 601, 
+    ylim.HBA = c(-15, 0), show.occup.window = TRUE, 
+    annotation = data.frame(name = "alpha2", color = "purple", 
+    left = 1534, right = 1559), full = TRUE)
+@
+
+The function \verb@mutNuCpos@ can receive either character string 
+objects or DNAString objects as the arguments $\Rfunarg{wtseq}$ 
+and $\Rfunarg{ins}$. The position of insertion is specified by 
+the argument $\Rfunarg{site}$. The argument $\Rfunarg{species}$ 
+is set as in other functions such as \verb@predNuCpos@. 
+When $\Rfunarg{show.occup.window}$ is TRUE, the regions used for 
+calculation of \textit{Difference in occupancy}, which is stored 
+in the results 
+(or printed in the console when \Robject{full = TRUE}), 
+are shaded in the nucleosome occupancy plots. 
+
+\verb@mutNuCpos@ does not save any data in the working directory. 
+To receive calculation results from the function, use the 
+assignment operator and set the $\Rfunarg{full}$ argument as TRUE 
+to do so. One can obtain the prediction results for a wild-type 
+sequence (or a mutant sequence by giving it as $\Rfunarg{wtseq}$) 
+by setting the arguments $\Rfunarg{ins}$ and $\Rfunarg{del}$ 
+as defaults. 
+
+The argument $\Rfunarg{annotation}$ is useful for indicating 
+positions of relevant elements. In this example, the alpha-2 
+operator is shown as purple horizontal lines. The red horizontal 
+lines indicate insertions. 
+
+This function receives a wild-type DNA sequence longer than 1,000 bp. 
+The sequence can only contain A, C, G and T. The received sequence 
+is mutagenized and pentaplicated before performing predictions to 
+avoid terminal effects. The coordinates (\Robject{pos}) for the 
+results are with respect to the central copy of the pentaplicated 
+sequence. 
+
+<<>>=
+mut.results[(((1811+76)*2)-3):(((1811+76)*2)+3),]
+@
+
+
+\section{Acknowledgements}
+We would like to thank Drs. Shimizu, Fuse and Ichikawa for 
+sharing DNA sequences and \textit{in vivo} data, 
+and giving fruitful comments.
+
+
+\bibliographystyle{apalike}
+%\bibliography{nuCposBib.bib}
+
+\begin{thebibliography}{}
+
+\bibitem[Wang et~al., 2008]{stat:WangWidom2008}
+    Wang JP, Fondufe-Mittendorf Y, Xi L, Tsai GF, Segal E and 
+    Widom J (2008).
+\newblock Preferentially quantized linker {DNA} lengths in 
+    \textit{Saccharomyces cerevisiae}.
+\newblock {\em PLoS Computational Biology}, 4(9):e1000175.
+
+\bibitem[Xi et~al., 2010]{stat:XiWang2010}
+    Xi L, Fondufe-Mittendorf Y, Xia L, Flatow J, Widom J and 
+    Wang JP (2010).
+    \newblock Predicting nucleosome positioning using a 
+        duration hidden markov model.
+    \newblock {\em BMC Bioinformatics}, 11:346.
+
+\bibitem[Brogaard et~al., 2012]{stat:Brogaard2012}
+    Brogaard K, Xi L, and Widom J (2012).
+    \newblock A map of nucleosome positions in yeast at 
+        base-pair resolution.
+    \newblock {\em Nature}, 486(7404):496-501.
+
+\bibitem[Moyle-Heyrman et~al., 2012]{stat:Moyle-Heyrman2013}
+    Moyle-Heyrman G, Zaichuk T, Xi L, Zhang Q, Uhlenbeck OC, 
+        Holmgren R, Widom J and Wang JP (2013).
+    \newblock Chemical map of \textit{Schizosaccharomyces pombe} 
+        reveals species-specific features in nucleosome positioning.
+    \newblock {\em Proc. Natl. Acad. Sci. U. S. A.}, 
+        110(50):20158-63.
+
+\bibitem[Ichikawa et~al., 2014]{stat:Ichikawa2014}
+    Ichikawa Y, Morohoshi K, Nishimura Y, Kurumizaka H and 
+        Shimizu M (2014).
+    \newblock Telomeric repeats act as nucleosome-disfavouring 
+        sequences in vivo.
+    \newblock {\em Nucleic Acids Res.}, 42(3):1541-1552.
+
+\bibitem[Voong et~al., 2016]{stat:Voong2016}
+    Voong LN, Xi L, Sebeson AC, Xiong B, Wang JP and Wang X (2016).
+    \newblock Insights into Nucleosome Organization in 
+        Mouse Embryonic Stem Cells through Chemical Mapping.
+    \newblock {\em Cell}, 167(6):1555-1570.
+
+\bibitem[Fuse et~al., 2017]{stat:Fuse2017}
+    Fuse T, Katsumata K, Morohoshi K, Mukai Y, Ichikawa Y, 
+        Kurumizaka H, Yanagida A, Urano T, Kato H, and Shimizu M (2017).
+    \newblock Parallel mapping with site-directed hydroxyl radicals 
+        and micrococcal nuclease reveals structural features of 
+        positioned nucleosomes in vivo.
+    \newblock {\em Plos One}, 12(10):e0186974.
+
+
+\end{thebibliography}
+
+
+\end{document}
