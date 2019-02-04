@@ -4,3 +4,6 @@ This is an R package for prediction of nucleosome positions. This package uses d
 Contact: 
 Hiroaki Kato <hkato@med.shimane-u.ac.jp>
 Shimane University School of Medicine
+
+# IMPORTANT
+This is the first version used for submittion to Bioconductor. The newest version is available at the Bioconductor website.
